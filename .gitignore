@@ -1,24 +1,313 @@
-# Compiled class file
-*.class
+import java.io.*;
+import java.util.*;
 
-# Log file
-*.log
+/**
+ * Clase AddressBook que representa una agenda telefónica
+ * Almacena contactos en un HashMap y los persiste en un archivo CSV
+ * 
+ * Actividad 4 - Tema 12
+ * Programación en Java
+ */
+public class AddressBook {
+    private HashMap<String, String> contacts;
+    private final String fileName;
+    private Scanner scanner;
 
-# BlueJ files
-*.ctxt
+    /**
+     * Constructor de la clase AddressBook
+     * @param fileName nombre del archivo donde se almacenarán los contactos
+     */
+    public AddressBook(String fileName) {
+        this.contacts = new HashMap<>();
+        this.fileName = fileName;
+        this.scanner = new Scanner(System.in);
+        load(); // Cargar contactos existentes al inicializar
+    }
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+    /**
+     * Carga los contactos desde el archivo CSV
+     * Formato esperado: numero,nombre
+     */
+    public void load() {
+        try (BufferedReader reader = new BufferedReader(new FileReader(fileName))) {
+            String line;
+            int count = 0;
+            
+            while ((line = reader.readLine()) != null) {
+                if (!line.trim().isEmpty()) {
+                    String[] parts = line.split(",", 2);
+                    if (parts.length == 2) {
+                        contacts.put(parts[0].trim(), parts[1].trim());
+                        count++;
+                    }
+                }
+            }
+            
+            if (count > 0) {
+                System.out.println("✅ Se cargaron " + count + " contactos desde " + fileName);
+            }
+            
+        } catch (FileNotFoundException e) {
+            System.out.println("📝 Archivo no encontrado. Se creará uno nuevo: " + fileName);
+        } catch (IOException e) {
+            System.err.println("❌ Error al leer el archivo: " + e.getMessage());
+        }
+    }
 
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
+    /**
+     * Guarda los contactos actuales en el archivo CSV
+     * Formato: numero,nombre
+     */
+    public void save() {
+        try (PrintWriter writer = new PrintWriter(new FileWriter(fileName))) {
+            for (Map.Entry<String, String> entry : contacts.entrySet()) {
+                writer.println(entry.getKey() + "," + entry.getValue());
+            }
+            System.out.println("💾 Contactos guardados exitosamente en " + fileName);
+        } catch (IOException e) {
+            System.err.println("❌ Error al guardar el archivo: " + e.getMessage());
+        }
+    }
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
+    /**
+     * Muestra todos los contactos de la agenda
+     */
+    public void list() {
+        System.out.println("\n" + "=".repeat(50));
+        System.out.println("📞 LISTA DE CONTACTOS");
+        System.out.println("=".repeat(50));
+        
+        if (contacts.isEmpty()) {
+            System.out.println("📭 No hay contactos en la agenda.");
+            return;
+        }
+
+        System.out.print("Contactos: ");
+        boolean first = true;
+        
+        // Ordenar contactos por nombre para mejor presentación
+        List<Map.Entry<String, String>> sortedContacts = new ArrayList<>(contacts.entrySet());
+        sortedContacts.sort(Map.Entry.comparingByValue());
+        
+        for (Map.Entry<String, String> entry : sortedContacts) {
+            if (!first) {
+                System.out.print(" ");
+            }
+            System.out.print("{" + entry.getKey() + "} : {" + entry.getValue() + "}");
+            first = false;
+        }
+        
+        System.out.println("\n" + "=".repeat(50));
+        System.out.println("Total de contactos: " + contacts.size());
+    }
+
+    /**
+     * Crea un nuevo contacto
+     */
+    public void create() {
+        System.out.println("\n" + "=".repeat(50));
+        System.out.println("➕ CREAR NUEVO CONTACTO");
+        System.out.println("=".repeat(50));
+        
+        System.out.print("Ingrese el número telefónico: ");
+        String phoneNumber = scanner.nextLine().trim();
+        
+        if (phoneNumber.isEmpty()) {
+            System.out.println("❌ El número telefónico no puede estar vacío.");
+            return;
+        }
+        
+        // Validación básica del número
+        if (!isValidPhoneNumber(phoneNumber)) {
+            System.out.println("❌ Formato de número inválido. Use solo números, espacios, guiones o paréntesis.");
+            return;
+        }
+        
+        if (contacts.containsKey(phoneNumber)) {
+            System.out.println("⚠️ Ya existe un contacto con este número: " + contacts.get(phoneNumber));
+            System.out.print("¿Desea actualizar el contacto? (s/n): ");
+            String response = scanner.nextLine().trim().toLowerCase();
+            
+            if (!response.equals("s") && !response.equals("si")) {
+                System.out.println("❌ Operación cancelada.");
+                return;
+            }
+        }
+        
+        System.out.print("Ingrese el nombre del contacto: ");
+        String name = scanner.nextLine().trim();
+        
+        if (name.isEmpty()) {
+            System.out.println("❌ El nombre no puede estar vacío.");
+            return;
+        }
+        
+        contacts.put(phoneNumber, name);
+        save(); // Guardar automáticamente
+        
+        System.out.println("✅ Contacto creado/actualizado exitosamente:");
+        System.out.println("   📱 " + phoneNumber + " - " + name);
+    }
+
+    /**
+     * Elimina un contacto de la agenda
+     */
+    public void delete() {
+        System.out.println("\n" + "=".repeat(50));
+        System.out.println("🗑️ ELIMINAR CONTACTO");
+        System.out.println("=".repeat(50));
+        
+        if (contacts.isEmpty()) {
+            System.out.println("📭 No hay contactos para eliminar.");
+            return;
+        }
+        
+        System.out.print("Ingrese el número telefónico a eliminar: ");
+        String phoneNumber = scanner.nextLine().trim();
+        
+        if (contacts.containsKey(phoneNumber)) {
+            String name = contacts.get(phoneNumber);
+            
+            System.out.println("Se eliminará el contacto:");
+            System.out.println("   📱 " + phoneNumber + " - " + name);
+            System.out.print("¿Está seguro? (s/n): ");
+            
+            String confirmation = scanner.nextLine().trim().toLowerCase();
+            
+            if (confirmation.equals("s") || confirmation.equals("si")) {
+                contacts.remove(phoneNumber);
+                save(); // Guardar automáticamente
+                System.out.println("✅ Contacto eliminado exitosamente.");
+            } else {
+                System.out.println("❌ Eliminación cancelada.");
+            }
+        } else {
+            System.out.println("❌ No se encontró un contacto con el número: " + phoneNumber);
+        }
+    }
+
+    /**
+     * Funcionalidad adicional: Buscar contactos
+     */
+    public void search() {
+        System.out.println("\n" + "=".repeat(50));
+        System.out.println("🔍 BUSCAR CONTACTOS");
+        System.out.println("=".repeat(50));
+        
+        if (contacts.isEmpty()) {
+            System.out.println("📭 No hay contactos para buscar.");
+            return;
+        }
+        
+        System.out.print("Ingrese el término de búsqueda (nombre o número): ");
+        String searchTerm = scanner.nextLine().trim().toLowerCase();
+        
+        if (searchTerm.isEmpty()) {
+            System.out.println("❌ El término de búsqueda no puede estar vacío.");
+            return;
+        }
+        
+        List<Map.Entry<String, String>> results = new ArrayList<>();
+        
+        for (Map.Entry<String, String> entry : contacts.entrySet()) {
+            if (entry.getKey().toLowerCase().contains(searchTerm) || 
+                entry.getValue().toLowerCase().contains(searchTerm)) {
+                results.add(entry);
+            }
+        }
+        
+        if (results.isEmpty()) {
+            System.out.println("❌ No se encontraron contactos que coincidan con: " + searchTerm);
+        } else {
+            System.out.println("✅ Se encontraron " + results.size() + " resultado(s):");
+            for (Map.Entry<String, String> entry : results) {
+                System.out.println("   📱 " + entry.getKey() + " - " + entry.getValue());
+            }
+        }
+    }
+
+    /**
+     * Valida el formato básico del número telefónico
+     */
+    private boolean isValidPhoneNumber(String phoneNumber) {
+        // Permite números, espacios, guiones, paréntesis y el signo +
+        return phoneNumber.matches("[\\d\\s\\-\\(\\)\\+]+");
+    }
+
+    /**
+     * Muestra el menú principal y maneja la interacción con el usuario
+     */
+    public void showMenu() {
+        boolean running = true;
+        
+        System.out.println("📱 BIENVENIDO A LA AGENDA TELEFÓNICA 📱");
+        System.out.println("=====================================");
+        
+        while (running) {
+            System.out.println("\n" + "=".repeat(40));
+            System.out.println("           MENÚ PRINCIPAL");
+            System.out.println("=".repeat(40));
+            System.out.println("1. 📋 Listar contactos");
+            System.out.println("2. ➕ Crear contacto");
+            System.out.println("3. 🗑️  Eliminar contacto");
+            System.out.println("4. 🔍 Buscar contactos");
+            System.out.println("5. 💾 Guardar cambios");
+            System.out.println("6. 🔄 Recargar desde archivo");
+            System.out.println("0. 🚪 Salir");
+            System.out.println("=".repeat(40));
+            System.out.print("Seleccione una opción: ");
+            
+            String option = scanner.nextLine().trim();
+            
+            switch (option) {
+                case "1":
+                    list();
+                    break;
+                case "2":
+                    create();
+                    break;
+                case "3":
+                    delete();
+                    break;
+                case "4":
+                    search();
+                    break;
+                case "5":
+                    save();
+                    break;
+                case "6":
+                    load();
+                    break;
+                case "0":
+                    System.out.println("\n👋 ¡Gracias por usar la Agenda Telefónica!");
+                    System.out.println("💾 Los cambios se han guardado automáticamente.");
+                    running = false;
+                    break;
+                default:
+                    System.out.println("❌ Opción no válida. Por favor, seleccione una opción del 0 al 6.");
+            }
+            
+            if (running) {
+                System.out.println("\nPresione Enter para continuar...");
+                scanner.nextLine();
+            }
+        }
+        
+        scanner.close();
+    }
+
+    /**
+     * Método main - Punto de entrada del programa
+     */
+    public static void main(String[] args) {
+        String fileName = "contactos.csv";
+        
+        // Permitir especificar un archivo diferente como argumento
+        if (args.length > 0) {
+            fileName = args[0];
+        }
+        
+        AddressBook addressBook = new AddressBook(fileName);
+        addressBook.showMenu();
+    }
+}
